@@ -134,6 +134,30 @@ node ../../node_modules/vite/bin/vite.js build --config vite.bundle.config.js
                           打开 Portal,菜单出现插件项;F12 无加载错误
 ```
 
+### 5.1 一键部署脚本（推荐）
+
+`scripts/deploy.sh` 将上述"发布 + 配置 + 验证"压缩为一条命令，适用于
+全新服务器部署与日常版本更新：
+
+```bash
+# 打包发布物（构建完成后，在 portal/dist/ 内执行）
+tar -czf openan-portal-dist.tar.gz index.html assets plugins
+
+# 目标服务器上（与 scripts/openan-portal.nginx.conf、发布包同目录）：
+sudo bash deploy.sh                       # 默认: /OpenA2A-T/openan-portal-frontend, 端口 9003+3003
+sudo bash deploy.sh /data/web 8080 8081   # 自定义目录与端口
+sudo bash deploy.sh --lang zh             # 提示信息强制中文（--lang en 强制英文；
+                                          # 默认按系统 locale 自动选择，亦可用 DEPLOY_LANG）
+```
+
+脚本行为：备份旧目录（带时间戳）→ 解压新版 → 渲染并写入
+`/etc/nginx/conf.d/openan-portal.conf` → `nginx -t` 校验通过后 reload →
+自检首页/主包/各插件清单并输出结果（全部通过退出码为 0，可接入 CI）。
+回滚：`mv <WEB_ROOT>.bak-<时间戳> <WEB_ROOT> && nginx -s reload`。
+
+前置条件与后端网关依赖（编排中心 :5001 / 注册中心 :5000 / 本体 :8787）
+见第 6 节 nginx 配置；完整部署文档随发布包提供（README-DEPLOY.md）。
+
 ---
 
 ## 6. Nginx 配置要求
