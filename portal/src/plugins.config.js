@@ -39,14 +39,26 @@ import discovered from 'virtual:openan-plugins';
 // REMOTE mode: change entry to the plugin server's absolute URL,
 //   e.g. 'http://registry-center:5000/plugins/registry-center'
 const bundledPlugins = [
-    // Plugin artifacts are contributed by their own repositories/PRs.
-    // Add entries here when a plugin bundle lands, e.g.:
-    // {
-    //     id: 'registry-center-bundle',
-    //     mode: 'bundle',
-    //     entry: '/plugins/registry-center',   // → portal/public/plugins/registry-center
-    //     enabled: true,
-    // },
+    {
+        id: 'registry-center',
+        mode: 'bundle',
+        entry: '/plugins/registry-center',   // → portal/public/plugins/registry-center
+        enabled: true,
+    },
+    {
+        id: 'orchestration-center',
+        mode: 'bundle',
+        entry: '/plugins/orchestration-center',   // → portal/public/plugins/orchestration-center
+        enabled: true,
+    },
+    {
+        id: 'ontology-demo',
+        mode: 'bundle',
+        entry: '/plugins/ontology-demo',   // → portal/public/plugins/ontology-demo
+        // Disabled by default: the ontology backend (:8787) is an optional
+        // demo dependency. Flip to true for deliveries that ship it.
+        enabled: false,
+    },
     // Example REMOTE mode (served by the plugin's own server with CORS):
     // {
     //     id: 'demo-showcase-remote',

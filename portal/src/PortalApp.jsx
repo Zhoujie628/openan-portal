@@ -67,9 +67,14 @@ function PortalShell({ pluginsConfig }) {
 
     useEffect(() => {
         async function loadAllPlugins() {
-            // Split by loading mode
+            // Split by loading mode. Bundle plugins honor the per-delivery
+            // `enabled` flag (parity with source plugins, which are filtered
+            // by loadEnabledPlugins in @openan/portal-sdk). Entries without
+            // an explicit flag stay enabled by default.
             const sourceEntries = pluginsConfig.plugins.filter((p) => p.manifest);
-            const bundleEntries = pluginsConfig.plugins.filter((p) => p.mode === 'bundle' && p.entry);
+            const bundleEntries = pluginsConfig.plugins.filter(
+                (p) => p.mode === 'bundle' && p.entry && p.enabled !== false
+            );
 
             // 1. SOURCE plugins — compiled by Portal's Vite at build time
             const sourceManifests = await loadEnabledPlugins({ plugins: sourceEntries });
