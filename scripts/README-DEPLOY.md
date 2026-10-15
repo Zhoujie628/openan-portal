@@ -2,15 +2,16 @@
 
 本包内含 OpenAN Portal（插件化统一门户）的**生产构建产物**与一键部署脚本，可在任意新服务器上独立部署。
 
-- 构建来源：`openan-portal` 仓库 `feature/execution-center-plugin` 分支（commit `1968690`）
-- 与线上 `47.236.98.226:9003` 部署版本同源（编排中心/注册中心插件包字节级一致）
+- 构建来源：`openan-portal` 仓库 `feature/portal-bundle-plugins` 分支（与 [PR #13](https://github.com/project-openan/openan-portal/pull/13) 一致，本体插件默认禁用）
+- 与线上 `47.236.98.226:9003` 部署版本同源
 
 ## 包内容
 
 | 文件 | 说明 |
 |---|---|
 | `openan-portal-dist.tar.gz` | Portal 生产构建产物（index.html + assets/ + plugins/） |
-| `deploy.sh` | 一键部署脚本（备份旧版 → 解压 → 装 nginx 配置 → 自检） |
+| `deploy-zh.sh` | 一键部署脚本（中文提示）：复制备份 → 叠加解压 → 装 nginx 配置 → 自检 |
+| `deploy-en.sh` | One-click deploy script (English output) |
 | `openan-portal.nginx.conf` | nginx 配置模板（端口可参数化） |
 | `README-DEPLOY.md` | 本文档 |
 
@@ -36,22 +37,14 @@
 scp -r portal-release/ user@<server>:/tmp/openan-portal-release/
 
 # 2. 在目标服务器上执行（默认部署到 /OpenA2A-T/openan-portal-frontend，端口 9003+3003）
-sudo bash /tmp/openan-portal-release/deploy.sh
+sudo bash /tmp/openan-portal-release/deploy-zh.sh    # 中文提示
+sudo bash /tmp/openan-portal-release/deploy-en.sh    # English output
 
-# 自定义路径与端口：
-sudo bash deploy.sh /data/openan-portal-frontend 8080 8081
+# 自定义路径与端口（两个脚本参数相同）：
+sudo bash deploy-zh.sh /data/openan-portal-frontend 8080 8081
 ```
 
-**中英文输出**（脚本提示信息支持双语）：
-
-```bash
-sudo bash deploy.sh --lang zh      # 强制中文
-sudo bash deploy.sh --lang en      # force English
-DEPLOY_LANG=en sudo bash deploy.sh # 环境变量方式
-sudo bash deploy.sh                # 不指定时按系统 locale 自动选择
-```
-
-脚本会自动：备份旧目录 → 解压新版 → 生成 nginx 配置 → `nginx -t` 校验 → reload → 自检页面/主包/插件清单。
+脚本会自动：复制备份旧目录（保留旧 chunk，平滑过渡旧会话）→ **叠加**解压新版 → 生成 nginx 配置 → `nginx -t` 校验 → reload → 自检页面/主包/插件清单。
 
 ## 部署后验证
 
@@ -66,9 +59,10 @@ curl -s http://127.0.0.1:9003/api/orchestrate/rest/v1/orchestrate/workflows     
 ## 回滚
 
 ```bash
-mv /OpenA2A-T/openan-portal-frontend.bak-<时间戳> /OpenA2A-T/openan-portal-frontend
-nginx -s reload
+rm -rf /OpenA2A-T/openan-portal-frontend && cp -a /OpenA2A-T/openan-portal-frontend.bak-<时间戳> /OpenA2A-T/openan-portal-frontend && nginx -s reload
 ```
+
+> 部署为**叠加式**：旧 hash 命名的 chunk 会保留在 web root，部署前打开的浏览器会话可平滑过渡；历史文件会累积，可定期清理（脚本结束时打印清理命令）。
 
 ## 从源码重新构建（可选）
 
