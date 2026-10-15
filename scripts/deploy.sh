@@ -65,24 +65,35 @@ echo "$(t '语言' 'Language'): $LANG_CHOICE"
 echo ""
 
 # ---------------- 1/5 backup / 备份 ----------------
+# 备份用 cp 而非 mv：旧 hash 命名的 chunk 需留在 web root，
+# 让部署前打开的浏览器会话（SPA 懒加载旧 chunk）平滑过渡。
+# The backup COPIES instead of MOVES: old hash-named chunks must stay in the
+# web root so browser sessions opened before the deploy (which lazy-load the
+# old chunks) keep working.
 echo "$(t '== 1/5 备份旧目录 ==' '== 1/5 Backing up existing deployment ==')"
+OVERLAY=0
 if [ -d "$WEB_ROOT" ]; then
-    mv "$WEB_ROOT" "$BACKUP"
-    echo "$(t "   旧目录已备份至: $BACKUP" "   Existing deployment moved to: $BACKUP")"
+    OVERLAY=1
+    cp -a "$WEB_ROOT" "$BACKUP"
+    echo "$(t "   旧目录已复制备份至: $BACKUP" "   Existing deployment copied to: $BACKUP")"
 else
     echo "$(t '   无旧部署，跳过备份' '   No existing deployment, skip backup')"
 fi
 
-# ---------------- 2/5 extract / 解压 ----------------
+# ---------------- 2/5 extract / 解压（叠加式 / overlay） ----------------
 if [ ! -f "$TARBALL" ]; then
     echo "$(t "ERROR: 发布包不存在: $TARBALL" "ERROR: release tarball not found: $TARBALL")"
     exit 1
 fi
-echo "$(t '== 2/5 解压新版本 ==' '== 2/5 Extracting new release ==')"
+echo "$(t '== 2/5 解压新版本（叠加，保留旧 chunk） ==' '== 2/5 Extracting new release (overlay, old chunks kept) ==')"
 mkdir -p "$WEB_ROOT"
 tar -xzf "$TARBALL" -C "$WEB_ROOT"
 FILE_COUNT=$(find "$WEB_ROOT" -type f | wc -l)
 echo "$(t "   已部署到: $WEB_ROOT ($FILE_COUNT 个文件)" "   Deployed to: $WEB_ROOT ($FILE_COUNT files)")"
+if [ "$OVERLAY" = "1" ]; then
+    echo "$(t "   提示: 历史 chunk 持续累积，可定期清理 30 天前文件:" "   Note: stale chunks accumulate over time; periodically clean files older than 30 days:")"
+    echo "        find $WEB_ROOT/assets -type f -mtime +30 -delete"
+fi
 
 # ---------------- 3/5 nginx conf / 安装 nginx 配置 ----------------
 if [ ! -f "$NGINX_CONF_SRC" ]; then
@@ -123,5 +134,5 @@ if [ "$FAIL" = "0" ]; then
 else
     echo "$(t '⚠️ 部署完成，但部分自检未通过，请检查上方输出。' '⚠️ Deployment finished, but some self checks FAILED, see output above.')"
 fi
-echo "$(t "回滚方式: mv $BACKUP $WEB_ROOT && nginx -s reload" "Rollback: mv $BACKUP $WEB_ROOT && nginx -s reload")"
+echo "$(t "回滚方式: rm -rf $WEB_ROOT && cp -a $BACKUP $WEB_ROOT && nginx -s reload" "Rollback: rm -rf $WEB_ROOT && cp -a $BACKUP $WEB_ROOT && nginx -s reload")"
 [ "$FAIL" = "0" ]
