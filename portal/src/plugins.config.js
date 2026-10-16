@@ -51,6 +51,24 @@ const bundledPlugins = [
         entry: '/plugins/orchestration-center',   // → portal/public/plugins/orchestration-center
         enabled: true,
     },
+    {
+        id: 'observation-center',
+        mode: 'bundle',
+        entry: '/plugins/observation-center',   // → portal/public/plugins/observation-center
+        enabled: true,
+    },
+    {
+        id: 'virtual-showroom',
+        mode: 'bundle',
+        entry: '/plugins/virtual-showroom',   // → portal/public/plugins/virtual-showroom
+        enabled: true,
+    },
+    {
+        id: 'an-ontology',
+        mode: 'bundle',
+        entry: '/plugins/an-ontology',   // → portal/public/plugins/an-ontology
+        enabled: true,
+    },
     // Example REMOTE mode (served by the plugin's own server with CORS):
     // {
     //     id: 'demo-showcase-remote',
