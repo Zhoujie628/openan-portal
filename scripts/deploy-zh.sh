@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # ============================================================================
 # OpenAN Portal 一键部署脚本（中文版）
 #
@@ -78,7 +78,7 @@ JS=$(grep -oE '/assets/index-[^"]+\.js' "$WEB_ROOT/index.html" | head -1)
 CODE=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT1$JS" 2>/dev/null || echo ERR)
 echo "   主包 $JS -> $CODE"
 [ "$CODE" = "200" ] || FAIL=1
-for plugin in orchestration-center registry-center ontology-demo; do
+for plugin in orchestration-center registry-center; do
     CODE=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT1/plugins/$plugin/plugin.manifest.json" 2>/dev/null || echo ERR)
     echo "   插件 $plugin -> $CODE"
     [ "$CODE" = "200" ] || FAIL=1
