@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { Sun, Moon, LogOut, Puzzle, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { useTheme } from '../../theme/ThemeContext.jsx';
+import logo from '../../assets/openan-logo.png';
 
 /**
  * Dynamic Header — renders navigation buttons from plugin manifests.
@@ -173,8 +174,11 @@ export default function Header({ plugins, disabledIds, onManagePlugins }) {
 
     return (
         <nav className="h-16 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-8 flex justify-between items-center shrink-0 z-20 transition-all">
-            {/* Brand */}
+            {/* Brand — logo mark (matches openan.dev navbar: 40px white rounded box) + wordmark */}
             <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-white dark:bg-zinc-800 p-1 flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-sm shrink-0 overflow-hidden">
+                    <img src={logo} alt="OpenAN logo" className="w-full h-full object-contain" />
+                </div>
                 <div className="flex flex-col">
                     <span className="text-xl font-medium tracking-tight text-zinc-900 dark:text-zinc-100 leading-tight">
                         Open<span className="text-blue-500">AN</span>
