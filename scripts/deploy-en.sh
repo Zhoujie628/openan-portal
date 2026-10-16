@@ -80,7 +80,7 @@ JS=$(grep -oE '/assets/index-[^"]+\.js' "$WEB_ROOT/index.html" | head -1)
 CODE=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT1$JS" 2>/dev/null || echo ERR)
 echo "   main bundle $JS -> $CODE"
 [ "$CODE" = "200" ] || FAIL=1
-for plugin in orchestration-center registry-center; do
+for plugin in orchestration-center registry-center observation-center virtual-showroom an-ontology; do
     CODE=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT1/plugins/$plugin/plugin.manifest.json" 2>/dev/null || echo ERR)
     echo "   plugin $plugin -> $CODE"
     [ "$CODE" = "200" ] || FAIL=1
