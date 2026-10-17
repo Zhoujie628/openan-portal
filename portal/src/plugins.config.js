@@ -52,12 +52,22 @@ const bundledPlugins = [
         enabled: true,
     },
     {
-        id: 'ontology-demo',
+        id: 'observation-center',
         mode: 'bundle',
-        entry: '/plugins/ontology-demo',   // → portal/public/plugins/ontology-demo
-        // Disabled by default: the ontology backend (:8787) is an optional
-        // demo dependency. Flip to true for deliveries that ship it.
-        enabled: false,
+        entry: '/plugins/observation-center',   // → portal/public/plugins/observation-center
+        enabled: true,
+    },
+    {
+        id: 'virtual-showroom',
+        mode: 'bundle',
+        entry: '/plugins/virtual-showroom',   // → portal/public/plugins/virtual-showroom
+        enabled: true,
+    },
+    {
+        id: 'an-ontology',
+        mode: 'bundle',
+        entry: '/plugins/an-ontology',   // → portal/public/plugins/an-ontology
+        enabled: true,
     },
     // Example REMOTE mode (served by the plugin's own server with CORS):
     // {

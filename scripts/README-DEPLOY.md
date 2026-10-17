@@ -24,7 +24,6 @@
 |---|---|---|
 | `/api/orchestrate/`、`/rest/v1/orchestrate/` | `127.0.0.1:5001` | 编排中心 FastAPI（`python -m orchestrate.start`） |
 | `/api/registry-center/`、`/api/registry/` | `127.0.0.1:5000` | 注册中心 FastAPI |
-| `/api/ontology/` | `127.0.0.1:8787` | 本体演示 node 服务（docker） |
 
 > 后端未部署时 Portal 仍可打开，只是对应插件的列表数据为空/报错；至少部署编排中心（5001）即可使用「编排中心 + 执行中心」。
 
@@ -54,7 +53,7 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:9003/plugins/registry-
 curl -s http://127.0.0.1:9003/api/orchestrate/rest/v1/orchestrate/workflows          # 期望 JSON（需编排中心后端）
 ```
 
-浏览器访问 `http://<服务器IP>:9003/`，左侧菜单应出现：注册中心 / 编排中心 / 执行中心 / 本体中心（执行中心与技能中心为内置插件，随主包加载）。
+浏览器访问 `http://<服务器IP>:9003/`，左侧菜单应出现：注册中心 / 编排中心 / 执行中心（执行中心与技能中心为内置插件，随主包加载）。
 
 ## 回滚
 
