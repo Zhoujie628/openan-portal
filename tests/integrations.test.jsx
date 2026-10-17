@@ -96,6 +96,7 @@ test('native editor is embedded with download support and no host auth in the UR
     await render(OntologyCenter);
     const frame = node.querySelector('iframe'); expect(frame.src).toBe('https://editor.example.org/');
     expect(frame.getAttribute('sandbox')).toContain('allow-downloads'); expect(frame.getAttribute('referrerpolicy')).toBe('no-referrer');
+    expect(frame.getAttribute('sandbox')).toContain('allow-modals');
     expect(node.textContent).toContain('download your work first');
     expect(fetch.mock.calls[0][0]).toContain('/plugins/an-ontology/config.json');
     await act(async () => root.unmount()); expect(fetch.mock.calls[0][1].signal.aborted).toBe(true);

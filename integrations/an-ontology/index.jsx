@@ -41,7 +41,9 @@ export default function OntologyCenter() {
         {!url && !error && <p role="status">{zh ? '加载配置…' : 'Loading configuration…'}</p>}
         {url && <>
             <p>{zh ? '若编辑器无法显示，请检查服务地址、浏览器网络及 frame-ancestors 策略，或使用独立页面。' : 'If the editor cannot be displayed, check its URL, browser connectivity and frame-ancestors policy, or open it separately.'}</p>
-            <iframe title="Ontology T-Box Editor" src={url} sandbox="allow-scripts allow-same-origin allow-downloads allow-forms" referrerPolicy="no-referrer" />
+            {/* The native editor registers beforeunload for dirty workspaces;
+                allow-modals preserves that browser-navigation safeguard. */}
+            <iframe title="Ontology T-Box Editor" src={url} sandbox="allow-scripts allow-same-origin allow-downloads allow-forms allow-modals" referrerPolicy="no-referrer" />
         </>}
     </section>;
 }
