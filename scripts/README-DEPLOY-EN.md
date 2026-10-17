@@ -75,14 +75,17 @@ npm ci
 # Build independently in each component project, then install its dist-plugin:
 npm run plugins:install -- registry-center=../registry-center/registry-center-web/dist-plugin orchestration-center=../orchestration-center/workflow-designer/dist-plugin
 npm run plugins:install -- virtual-showroom=../openan-demo/portal-plugins/virtual-showroom/dist-plugin
-# Replace these two paths with artifacts supplied by their component maintainers:
-npm run plugins:install -- observation-center=/path/to/observation-center/dist-plugin an-ontology=/path/to/an-ontology/dist-plugin
+npm run integrations:build
+# Set appUrl in integrations/dist-plugin/an-ontology/config.json to the editor's public dedicated origin root.
+npm run plugins:install -- observation-center=integrations/dist-plugin/observation-center an-ontology=integrations/dist-plugin/an-ontology
 npm run build:release
 # portal/dist/plugins.release.json records versions and hashes for all assets.
 # Package portal/dist/ as openan-portal-dist.tar.gz with the deployment scripts.
 ```
 
 `npm run build` builds the shell, not a complete release. Release and Docker builds require every enabled bundle; missing artifacts fail rather than silently disabling a plugin. For a reduced delivery, explicitly edit the JSON registry and rebuild. Remote runtime bundles need separate delivery verification.
+
+Set `OBSERVATION_URL` for dev/preview (default `http://127.0.0.1:5002`); containers also accept `OBSERVATION_HOST/PORT/SCHEME`. Adjust standalone Nginx's target separately. Deploy the native T-Box service and configure its browser-reachable dedicated origin root; HTTPS Portal requires an HTTPS editor. See [adapter setup](../integrations/README.md) for access control, embedding policy and verification boundaries.
 
 Installation copies and hashes auxiliary files such as `cards.json`, images and JS chunks, and rejects symlinks and non-public files. Upload `deploy-common.sh` with both language scripts; checks use the generated `plugins.enabled` inventory.
 

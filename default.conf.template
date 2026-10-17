@@ -76,6 +76,19 @@ server {
         proxy_read_timeout 300s;
     }
 
+    # Read-only observation adapter. Do not expose unauthenticated ingestion
+    # POST endpoints through the Portal's presentation gateway.
+    location ~ ^/api/observe(/|$)(.*)$ {
+        limit_except GET { deny all; }
+        rewrite ^/api/observe(/|$)(.*)$ /$2 break;
+        proxy_pass ${OBSERVATION_URL};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_read_timeout 60s;
+    }
+
     # Compatibility for independently-built plugins using direct API paths.
     location /rest/v1/orchestrate/ {
         proxy_pass ${BACKEND_URL};

@@ -19,13 +19,15 @@
 
 `portal/bundled-plugins.json` 是唯一 bundle 启用清单。当前默认启用注册中心、编排中心、观测中心、虚拟展厅和 AN 本体五个独立插件，旧 `ontology-demo` 已移除。修改启用状态或远程 entry 不再编辑另一份 JS 列表。
 
-在各插件的来源项目中独立构建后安装制品。下面的观测中心和 AN 本体路径是由组件维护者提供的制品目录，不代表本仓包含它们的源码：
+注册中心、编排中心和虚拟展厅在来源项目中构建；观测中心和 AN 本体的薄适配器由本仓 `integrations/` 独立构建，不复制组件后端或原生编辑器源码：
 
 ```bash
 npm ci
 npm run plugins:install -- registry-center=../registry-center/registry-center-web/dist-plugin orchestration-center=../orchestration-center/workflow-designer/dist-plugin
 npm run plugins:install -- virtual-showroom=../openan-demo/portal-plugins/virtual-showroom/dist-plugin
-npm run plugins:install -- observation-center=/path/to/observation-center/dist-plugin an-ontology=/path/to/an-ontology/dist-plugin
+npm run integrations:build
+# 编辑 integrations/dist-plugin/an-ontology/config.json，appUrl 设置为本体编辑器公开根 URL。
+npm run plugins:install -- observation-center=integrations/dist-plugin/observation-center an-ontology=integrations/dist-plugin/an-ontology
 npm run lint
 npm test
 npm run build:release
@@ -38,3 +40,13 @@ npm run build:release
 部署脚本须携带 deploy-common.sh；目录和端口先校验，Nginx root 按实际 WEB_ROOT 渲染，自检只访问发布清单中的启用插件。完整端到端联调仍需真实后端、正确 TLS/身份配置，不由单元测试替代。
 
 `apply-plugin-registration.sh` 仅作为旧预构建制品的兼容工具，保留补回三类插件及设置 AN 本体 URL 的接口。它支持旧反引号和当前 JSON 风格，幂等且拒绝歧义/未知结构，不依赖 `zu` 等压缩变量名。新源码已经登记五个插件，应重建而非修改 hash 产物；兼容脚本不能替代制品安装和发布校验。
+
+## GitCode 组件适配
+
+详见 [适配器构建、服务配置与验证边界](../integrations/README.md)。观测网关为 `/api/observe`，开发/预览通过 `OBSERVATION_URL` 指向观测后端；容器还支持 `OBSERVATION_HOST/PORT/SCHEME`。独立 Nginx 默认 5002，可按部署环境调整。该入口仅允许 GET/HEAD，不代理事件上报写操作。
+
+观测适配器读取 `/rest/v1/observe/traces` 及详情，展示真实会话、拓扑节点/连线、指标与最近 200 条交互。请求完成后间隔 5 秒刷新快照，不是 SSE，也不控制任何 Task-T 或 Notification-T 订阅；不会根据某条通知的 completed 状态断开引擎订阅。切换会话和卸载取消旧请求，失败明确显示，不把 SPA HTML 或错误包络当作空数据。
+
+AN 本体通过独立 origin 的原生 T-Box 编辑器嵌入，继续使用原服务的工作区协议和 `/static` 资产，不把这些通用根路径代理进 Portal。`config.json` 的 `appUrl` 必须是无凭据、无查询参数的 HTTP(S) 根 URL；HTTPS Portal 不允许降级到 HTTP，禁止同源递归嵌入。旧 `__OPENAN_ONTOLOGY_APP_URL__` 注入优先兼容。未配置时明确报错；不伪造编辑器或 A-Box 菜单。切走菜单会卸载编辑器，需先导出成果，主题/语言保留原编辑器行为。
+
+这些服务目前没有与 Portal 共用的后端鉴权协议。Portal 登录页面不是它们的服务端访问控制：生产环境需由受控网关/网络 ACL 保护观测读取与编辑器 origin，并为编辑器配置允许 Portal 的 `frame-ancestors`。禁止把 Portal cookie/token 拼入 iframe URL；观测后端的 Langfuse 密钥也不会带到浏览器。

@@ -16,7 +16,7 @@ beforeAll(async () => {
     });
     await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
     const target = `http://127.0.0.1:${upstream.address().port}`;
-    const env = { BACKEND_URL: target, REGISTRY_URL: target, ONTOLOGY_URL: target };
+    const env = { BACKEND_URL: target, REGISTRY_URL: target, OBSERVATION_URL: target };
     temp = await fs.mkdtemp(path.join(os.tmpdir(), 'portal-proxy-test-'));
     await fs.writeFile(path.join(temp, 'index.html'), '<h1>shell</h1>');
     dev = await createServer({ configFile: path.resolve('portal/vite.config.js'), root: path.resolve('portal'),
@@ -41,6 +41,7 @@ test.each([
     ['/api/registry/rest/v1/registry-center/agent-cards', '/rest/v1/registry-center/agent-cards'],
     ['/api/orchestrate/rest/v1/orchestrate/dispatch?intent=probe', '/rest/v1/orchestrate/dispatch?intent=probe'],
     ['/rest/v1/orchestrate/workflows', '/rest/v1/orchestrate/workflows'],
+    ['/api/observe/rest/v1/observe/traces?probe=true', '/rest/v1/observe/traces?probe=true'],
     ['/rest/v1/registry-center/agents/health/stream', '/rest/v1/registry-center/agents/health/stream'],
 ])('%s routes consistently in dev and preview', async (url, expected) => {
     for (const base of [devUrl, previewUrl]) {
@@ -51,7 +52,7 @@ test.each([
 });
 test('prefix lookalikes cannot match the backend gateway', () => {
     const keys = Object.keys(backendProxy());
-    for (const path of ['/api/registry-other/rest', '/api/orchestrate-evil/rest', '/api/ontology/health']) {
+    for (const path of ['/api/registry-other/rest', '/api/orchestrate-evil/rest', '/api/observe-evil/rest', '/api/ontology/health']) {
         expect(keys.some(key => new RegExp(key).test(path))).toBe(false);
     }
 });
@@ -63,5 +64,11 @@ test('real dev and preview config both use the canonical proxy table', () => {
             expect({ ...table[key], rewrite: undefined }).toEqual({ ...expected[key], rewrite: undefined });
             expect(table[key].rewrite?.toString()).toBe(expected[key].rewrite?.toString());
         }
+    }
+});
+test('observation gateway rejects ingestion writes in dev and preview', async () => {
+    for (const base of [devUrl, previewUrl]) {
+        const response = await fetch(`${base}/api/observe/rest/v1/observe/live/events/probe`, { method: 'POST', body: '{}' });
+        expect(response.status).toBe(404);
     }
 });

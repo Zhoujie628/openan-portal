@@ -72,14 +72,17 @@ npm ci
 # 在各组件仓先执行 npm ci && npm run build:plugin，明确指定其制品目录：
 npm run plugins:install -- registry-center=../registry-center/registry-center-web/dist-plugin orchestration-center=../orchestration-center/workflow-designer/dist-plugin
 npm run plugins:install -- virtual-showroom=../openan-demo/portal-plugins/virtual-showroom/dist-plugin
-# 下列两个路径替换为各组件维护者提供的制品目录：
-npm run plugins:install -- observation-center=/path/to/observation-center/dist-plugin an-ontology=/path/to/an-ontology/dist-plugin
+npm run integrations:build
+# 配置 integrations/dist-plugin/an-ontology/config.json 的 appUrl 为编辑器独立公开根 URL。
+npm run plugins:install -- observation-center=integrations/dist-plugin/observation-center an-ontology=integrations/dist-plugin/an-ontology
 npm run build:release  # 先检查必需插件，再构建 portal/dist/
 # portal/dist/plugins.release.json 记录版本与 SHA-256；plugins.enabled 用于部署自检。
 # 将 dist 内容打包为 openan-portal-dist.tar.gz，与本目录脚本一起交付。
 ```
 
 > `npm run build` 只构建开发用壳层，不是完整交付验收。正式交付和 Docker 使用 `build:release`，缺少已启用插件或其资产时会失败；禁用的可选插件不参与自检。远程 bundle 仍可在运行时加载，但本地离线发布校验不替远程制品作可用性承诺。
+
+观测网关配置 `OBSERVATION_URL`（开发/预览默认 `http://127.0.0.1:5002`）；容器也支持 `OBSERVATION_HOST/PORT/SCHEME`。独立 Nginx 按模板调整目标地址。本体必须另行部署原生 T-Box 服务并配置浏览器可达的独立根 URL；HTTPS Portal 需要 HTTPS 编辑器。两组件生产访问控制、编辑器嵌入策略及验证边界见 [适配说明](../integrations/README.md)。
 
 启用清单只有 `portal/bundled-plugins.json` 一处。默认五个 bundle 均需交付；如需精简，由交付者显式禁用并重建，不要手改压缩主包。虚拟展厅的 `cards.json` 和 `images/` 会由安装工具一并复制并记录哈希。
 

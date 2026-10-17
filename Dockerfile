@@ -74,6 +74,9 @@ ENV REGISTRY_HOST=registry-center \
     REGISTRY_SCHEME=http \
     BACKEND_HOST=orchestration-center \
     BACKEND_PORT=5001 \
-    BACKEND_SCHEME=http
+    BACKEND_SCHEME=http \
+    OBSERVATION_HOST=observation-center \
+    OBSERVATION_PORT=5002 \
+    OBSERVATION_SCHEME=http
 
 EXPOSE 8080

@@ -15,6 +15,7 @@
     "build": "npm -w portal run build",
     "build:release": "npm run plugins:validate && npm run build",
     "plugins:install": "node scripts/plugin-artifacts.mjs install",
+    "integrations:build": "node scripts/build-integrations.mjs",
     "plugins:validate": "node scripts/plugin-artifacts.mjs validate",
     "lint": "eslint .",
     "test": "vitest run"
