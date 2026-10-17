@@ -12,6 +12,7 @@
 | `deploy-zh.sh` | 一键部署脚本（中文提示）：复制备份 → 叠加解压 → 装 nginx 配置 → 自检 |
 | `deploy-en.sh` | One-click deploy script (English output) |
 | `deploy-common.sh` | 两个语言脚本共用的参数校验、模板渲染与插件自检，必须一起上传 |
+| `apply-plugin-registration.sh` | 旧预构建制品的兼容注册工具，需 Python 3.9+；正常交付优先使用 JSON 清单重建 |
 | `openan-portal.nginx.conf` | nginx 配置模板（端口可参数化） |
 | `README-DEPLOY.md` | 本文档 |
 
@@ -70,9 +71,16 @@ git clone <openan-portal 仓库> && cd openan-portal
 npm ci
 # 在各组件仓先执行 npm ci && npm run build:plugin，明确指定其制品目录：
 npm run plugins:install -- registry-center=../registry-center/registry-center-web/dist-plugin orchestration-center=../orchestration-center/workflow-designer/dist-plugin
+npm run plugins:install -- virtual-showroom=../openan-demo/portal-plugins/virtual-showroom/dist-plugin
+# 下列两个路径替换为各组件维护者提供的制品目录：
+npm run plugins:install -- observation-center=/path/to/observation-center/dist-plugin an-ontology=/path/to/an-ontology/dist-plugin
 npm run build:release  # 先检查必需插件，再构建 portal/dist/
 # portal/dist/plugins.release.json 记录版本与 SHA-256；plugins.enabled 用于部署自检。
 # 将 dist 内容打包为 openan-portal-dist.tar.gz，与本目录脚本一起交付。
 ```
 
 > `npm run build` 只构建开发用壳层，不是完整交付验收。正式交付和 Docker 使用 `build:release`，缺少已启用插件或其资产时会失败；禁用的可选插件不参与自检。远程 bundle 仍可在运行时加载，但本地离线发布校验不替远程制品作可用性承诺。
+
+启用清单只有 `portal/bundled-plugins.json` 一处。默认五个 bundle 均需交付；如需精简，由交付者显式禁用并重建，不要手改压缩主包。虚拟展厅的 `cards.json` 和 `images/` 会由安装工具一并复制并记录哈希。
+
+旧包兼容：`bash apply-plugin-registration.sh WEB_ROOT [APP_URL]` 可补回新插件注册、设置 HTTP(S) AN 本体 URL。已完整注册时不重复追加，未知或歧义结构会拒绝且不改变部署文件；修改前保留 `.bak-plugins` 恢复副本。该操作不安装插件制品，也不证明旧包已通过当前发布验收。

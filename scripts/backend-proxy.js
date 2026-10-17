@@ -5,14 +5,12 @@ export function backendProxy(env = process.env) {
     const targets = {
         orchestrate: env.BACKEND_URL || 'http://127.0.0.1:5001',
         registry: env.REGISTRY_URL || 'http://127.0.0.1:5000',
-        ontology: env.ONTOLOGY_URL || 'http://127.0.0.1:8787',
     };
     const proxy = {};
     for (const [prefix, target] of [
         ['/api/orchestrate', targets.orchestrate],
         ['/api/registry-center', targets.registry],
         ['/api/registry', targets.registry],
-        ['/api/ontology', targets.ontology],
     ]) {
         proxy[`^${prefix}(?=/|$)`] = {
             target, changeOrigin: true, secure: false,

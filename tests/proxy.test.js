@@ -42,7 +42,6 @@ test.each([
     ['/api/orchestrate/rest/v1/orchestrate/dispatch?intent=probe', '/rest/v1/orchestrate/dispatch?intent=probe'],
     ['/rest/v1/orchestrate/workflows', '/rest/v1/orchestrate/workflows'],
     ['/rest/v1/registry-center/agents/health/stream', '/rest/v1/registry-center/agents/health/stream'],
-    ['/api/ontology/health', '/health'],
 ])('%s routes consistently in dev and preview', async (url, expected) => {
     for (const base of [devUrl, previewUrl]) {
         const response = await fetch(`${base}${url}`);
@@ -52,7 +51,7 @@ test.each([
 });
 test('prefix lookalikes cannot match the backend gateway', () => {
     const keys = Object.keys(backendProxy());
-    for (const path of ['/api/registry-other/rest', '/api/orchestrate-evil/rest']) {
+    for (const path of ['/api/registry-other/rest', '/api/orchestrate-evil/rest', '/api/ontology/health']) {
         expect(keys.some(key => new RegExp(key).test(path))).toBe(false);
     }
 });

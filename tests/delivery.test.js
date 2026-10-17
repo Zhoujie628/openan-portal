@@ -5,7 +5,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { inspectArtifact, validateArtifacts } from '../scripts/plugin-artifacts.mjs';
+import { inspectArtifact, installArtifact, validateArtifacts } from '../scripts/plugin-artifacts.mjs';
 
 let temp;
 beforeEach(async () => { temp = await fs.mkdtemp(path.join(os.tmpdir(), 'portal-delivery-test-')); });
@@ -37,6 +37,38 @@ test('missing asset, wrong id and traversal are rejected before installation', a
     await expect(inspectArtifact(directory, 'registry-center')).rejects.toThrow();
     manifest.entry = '../escape.js'; await fs.writeFile(path.join(directory, 'plugin.manifest.json'), JSON.stringify(manifest));
     await expect(inspectArtifact(directory, 'registry-center')).rejects.toThrow('unsafe artifact');
+});
+test('installation includes nested showroom config and images, and hashes every published file', async () => {
+    const { directory } = await artifact('virtual-showroom');
+    await fs.mkdir(path.join(directory, 'images'));
+    await fs.writeFile(path.join(directory, 'cards.json'), '{"cards":[]}');
+    await fs.writeFile(path.join(directory, 'images/demo.svg'), '<svg/>');
+    await fs.writeFile(path.join(directory, 'lazy.js'), '/* auxiliary chunk has no UMD global */');
+    const destination = path.join(temp, 'installed');
+    const inspected = await installArtifact(directory, 'virtual-showroom', destination);
+    expect(inspected.sha256['cards.json']).toMatch(/^[a-f0-9]{64}$/);
+    expect(inspected.sha256['images/demo.svg']).toMatch(/^[a-f0-9]{64}$/);
+    expect(await fs.readFile(path.join(destination, 'portal/public/plugins/virtual-showroom/images/demo.svg'), 'utf8')).toBe('<svg/>');
+    expect(await fs.readFile(path.join(destination, 'portal/public/plugins/virtual-showroom/cards.json'), 'utf8')).toBe('{"cards":[]}');
+});
+test.each(['.env', 'private.key', 'credentials.pem'])('non-public artifact %s is rejected before any copying', async name => {
+    const { directory } = await artifact();
+    await fs.writeFile(path.join(directory, name), 'test placeholder');
+    await expect(installArtifact(directory, 'registry-center', path.join(temp, 'installed'))).rejects.toThrow(/artifact/i);
+    expect(existsSync(path.join(temp, 'installed'))).toBe(false);
+});
+test('all five upstream bundle registrations are preserved in the single JSON registry', async () => {
+    const registry = JSON.parse(await fs.readFile('portal/bundled-plugins.json', 'utf8'));
+    expect(registry.filter(entry => entry.enabled !== false).map(entry => entry.id)).toEqual([
+        'registry-center', 'orchestration-center', 'observation-center', 'virtual-showroom', 'an-ontology',
+    ]);
+    expect(registry.some(entry => entry.id === 'ontology-demo')).toBe(false);
+    const source = await fs.readFile('portal/src/plugins.config.js', 'utf8');
+    expect(source).toContain("import bundledPlugins from '../bundled-plugins.json'");
+    expect(source).not.toContain('const bundledPlugins =');
+    for (const entry of registry) await artifact(entry.id);
+    await fs.writeFile(path.join(temp, 'portal/bundled-plugins.json'), JSON.stringify(registry));
+    expect((await validateArtifacts(temp)).map(entry => entry.id)).toEqual(registry.map(entry => entry.id));
 });
 test('every Docker COPY input exists and the release build is mandatory', async () => {
     const docker = await fs.readFile('Dockerfile', 'utf8');

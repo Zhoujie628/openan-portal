@@ -14,6 +14,8 @@ to `plugins.config.js`, and the page appears in the Portal.
 > starting point: it shows how to declare menus, routes, and i18n, how to read
 > framework services via `usePortalContext()`, and how to run standalone.
 
+> **Current delivery:** five independent bundles are enabled in `portal/bundled-plugins.json`; install all their artifacts before `npm run build:release`. See the [deployment guide](./scripts/README-DEPLOY-EN.md). Building only the shell does not validate a complete delivery.
+
 ## How It Works
 
 ```
