@@ -15,6 +15,11 @@ import sys
 import tempfile
 from urllib.parse import urlsplit
 
+# A redirected Windows console may default to cp1252; bilingual output must
+# not turn an otherwise successful deployment update into a process failure.
+sys.stdout.reconfigure(encoding='utf-8')
+sys.stderr.reconfigure(encoding='utf-8')
+
 root = Path(sys.argv[1]).resolve()
 app_url = sys.argv[2]
 index = root / 'index.html'

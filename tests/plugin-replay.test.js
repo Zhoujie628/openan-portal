@@ -22,9 +22,16 @@ afterEach(async () => {
     expect(path.dirname(temp)).toBe(os.tmpdir()); expect(path.basename(temp)).toMatch(/^portal-replay-test-/);
     await fs.rm(temp, { recursive: true, force: true });
 });
-function replay(url = '') {
-    return spawnSync(process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3'), ['-c', program, temp, url], { encoding: 'utf8' });
+function replay(url = '', env = {}) {
+    return spawnSync(process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3'), ['-c', program, temp, url], { encoding: 'utf8', env: { ...process.env, ...env } });
 }
+
+test('non-UTF8 Windows console encoding cannot fail an otherwise successful replay', async () => {
+    await fs.writeFile(main, `var registry=${JSON.stringify(required.map(entry))};`);
+    const result = replay('', { PYTHONIOENCODING: 'cp1252' });
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain('插件注册就绪');
+});
 
 test.each(['legacy', 'partial', 'current'])('replay handles %s registry without duplicate registrations or invalid JS', async kind => {
     const original = kind === 'legacy'
