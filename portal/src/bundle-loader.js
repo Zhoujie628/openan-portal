@@ -120,6 +120,10 @@ async function loadScriptRetry(src, attempts = 2) {
 async function ensureRuntimeGlobals() {
     if (window.__OPENAN_BUNDLE_GLOBALS_READY__) return;
 
+    // Older component service layers use this truthy marker to select the
+    // same-origin gateway. It is NOT a second mutable API/context container.
+    window.__OPENAN_PORTAL_CONTEXT__ = Object.freeze({ mode: 'portal' });
+
     // Node-style `process` shim — UMD builds (e.g. React dev builds bundled
     // inside plugin artifacts) read process.env.NODE_ENV. Browsers don't
     // define `process`, so provide a minimal stub before any bundle loads.

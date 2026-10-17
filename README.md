@@ -187,10 +187,8 @@ export default {
         },
     },
 
-    // ── Lifecycle hooks (optional) ──
-    onInit: async (ctx) => { /* called once after registration */ },
-    onActivate: () => { /* called when plugin becomes the active view */ },
-    onDeactivate: () => { /* called when plugin leaves the active view */ },
+    // Declarative routes/menus only. Use React useEffect + cleanup for
+    // resources; manifest lifecycle hooks/imperative registration are unsupported.
 
     // ── Standalone mode (optional) ──
     standalone: {
