@@ -45,6 +45,7 @@ import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import * as ReactI18next from 'react-i18next';
 import * as PortalSDK from '@openan/portal-sdk';
+import { withPluginDeadline, validateManifestMetadata } from '@openan/portal-sdk';
 
 // Wrap in a function so the modules stay lazily-referenced at call time.
 function getStaticModules() {
@@ -54,57 +55,65 @@ function getStaticModules() {
 const loadedScripts = new Set();
 const loadedStyles = new Set();
 
-function injectStyle(href) {
-    if (loadedStyles.has(href)) return;
-    loadedStyles.add(href);
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = href;
-    document.head.appendChild(link);
-}
-
-function injectScript(src) {
+function injectResource(url, style, signal) {
     return new Promise((resolve, reject) => {
-        if (loadedScripts.has(src)) return resolve();
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = () => {
-            loadedScripts.add(src);
+        if (signal.aborted) return reject(signal.reason);
+        const loaded = style ? loadedStyles : loadedScripts;
+        if (loaded.has(url)) return resolve();
+        const element = document.createElement(style ? 'link' : 'script');
+        if (style) { element.rel = 'stylesheet'; element.href = url; }
+        else element.src = url;
+        const cleanup = () => {
+            element.onload = null; element.onerror = null;
+            signal.removeEventListener('abort', abort);
+        };
+        const fail = error => { cleanup(); element.remove(); reject(error); };
+        const abort = () => fail(signal.reason);
+        element.onload = () => {
+            cleanup(); loaded.add(url);
             resolve();
         };
-        script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
-        document.head.appendChild(script);
+        element.onerror = () => fail(new Error(`Failed to load ${style ? 'stylesheet' : 'script'}: ${url}`));
+        signal.addEventListener('abort', abort, { once: true });
+        document.head.appendChild(element);
     });
 }
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms, signal) => new Promise((resolve, reject) => {
+    if (signal.aborted) return reject(signal.reason);
+    const abort = () => { clearTimeout(timer); reject(signal.reason); };
+    const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); }, ms);
+    signal.addEventListener('abort', abort, { once: true });
+});
 
 // Fetch with one retry — a transient failure (e.g. a redeploy happening while
 // the page loads) must not silently drop a plugin for the whole session.
-async function fetchJson(url, attempts = 2) {
+async function fetchJson(url, signal, attempts = 2) {
     let lastErr;
     for (let i = 0; i < attempts; i++) {
         try {
-            const resp = await fetch(url, { cache: 'no-store' });
+            const resp = await fetch(url, { cache: 'no-store', signal });
             if (!resp.ok) throw new Error(`Failed to fetch ${url}: ${resp.status}`);
             return await resp.json();
         } catch (err) {
+            if (signal.aborted) throw signal.reason;
             lastErr = err;
-            if (i < attempts - 1) await sleep(800);
+            if (i < attempts - 1) await sleep(800, signal);
         }
     }
     throw lastErr;
 }
 
-async function loadScriptRetry(src, attempts = 2) {
+async function loadResourceRetry(src, style, signal, attempts = 2) {
     let lastErr;
     for (let i = 0; i < attempts; i++) {
         try {
-            await injectScript(src);
+            await injectResource(src, style, signal);
             return;
         } catch (err) {
+            if (signal.aborted) throw signal.reason;
             lastErr = err;
-            if (i < attempts - 1) await sleep(800);
+            if (i < attempts - 1) await sleep(800, signal);
         }
     }
     throw lastErr;
@@ -213,25 +222,32 @@ function resolveBaseUrl(entry) {
  * @param {Object} entryCfg — { id, entry } from plugins config
  * @returns {Promise<{manifest: Object, Component: Function}>}
  */
-export async function loadPluginBundle(entryCfg) {
+export function loadPluginBundle(entryCfg, options = {}) {
+    return withPluginDeadline(signal => loadBundle(entryCfg, signal), { ...options, label: `Plugin ${entryCfg.id} bundle` });
+}
+
+async function loadBundle(entryCfg, signal) {
     const base = resolveBaseUrl(entryCfg.entry);
     const isRemote = /^https?:\/\//.test(base);
 
     // 0. Expose React/ReactDOM/ReactI18next/PortalSDK as globals so the
     //    UMD bundle's externals resolve against the Portal's instances.
     await ensureRuntimeGlobals();
+    signal.throwIfAborted();
 
     // 1. Load manifest (json — works for both local and remote)
-    const manifest = await fetchJson(`${base}/plugin.manifest.json`);
+    const manifest = validateManifestMetadata(await fetchJson(`${base}/plugin.manifest.json`, signal));
+    if (manifest.id !== entryCfg.id) throw new Error('Configured plugin id does not match its manifest');
 
     // 2. Load styles
     if (manifest.css) {
-        injectStyle(`${base}/${manifest.css}`);
+        await loadResourceRetry(`${base}/${manifest.css}`, true, signal);
     }
 
     // 3. Load the js bundle (UMD → sets a global)
     const globalKey = `__OPENAN_PLUGIN__${manifest.id.replace(/-/g, '_')}`;
-    await loadScriptRetry(`${base}/${manifest.entry || 'index.js'}`);
+    await loadResourceRetry(`${base}/${manifest.entry || 'index.js'}`, false, signal);
+    signal.throwIfAborted();
 
     // 4. Read the global the bundle exposed
     const bundle = window[globalKey];

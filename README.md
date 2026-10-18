@@ -11,8 +11,12 @@ to `plugins.config.js`, and the page appears in the Portal.
 
 > **Implementing a plugin?** Start from [`plugins/hello-portal/`](./plugins/hello-portal/) —
 > the reference implementation of the plugin contract. Copy the folder as a
-> starting point: it shows how to declare menus, routes, and i18n, how to read
+> starting point: it shows how to declare menus and routes, how to read
 > framework services via `usePortalContext()`, and how to run standalone.
+
+Run the backend-free reference with `npm ci && npm -w @openan-plugins/hello-portal run dev`
+(http://127.0.0.1:3004). It is disabled in the full Portal by default; enable it
+in `plugins/plugin-overrides.json` only when needed. See its [setup guide](./plugins/hello-portal/README.md).
 
 > **Current delivery:** five independent bundles are enabled in `portal/bundled-plugins.json`; install all their artifacts before `npm run build:release`. See the [deployment guide](./scripts/README-DEPLOY-EN.md). Building only the shell does not validate a complete delivery.
 
@@ -72,7 +76,7 @@ plugin routes with lazy loading and error boundaries.
 ## Repository Structure
 
 ```
-openan-website/                             ← THIS REPO (framework only)
+openan-website/                             ← Portal shell, SDK and integration adapters
 ├── package.json                            ← npm workspaces root
 ├── eslint.config.js
 ├── scripts/
@@ -93,11 +97,11 @@ openan-website/                             ← THIS REPO (framework only)
 │   ├── plugin-overrides.json               ← Per-delivery enable/disable
 │   ├── hello-portal/                       ← REFERENCE PLUGIN — copy as a starting point
 │   │   ├── plugin.manifest.js              ← Plugin definition (menu/routes/i18n/standalone)
-│   │   └── src/                            ← View component + locales + standalone entry
-│   ├── registry-center/                    ← Registry Center plugin
+│   │   └── src/                            ← View component + standalone entry
 │   ├── orchestration-center/               ← Orchestration Center plugin
 │   ├── execution-center/                   ← Execution Center plugin
-│   └── demo-showcase/                      ← Demo Showcase plugin (3D virtual showroom)
+│   └── skill-center/                      ← Skill Center source plugin
+├── integrations/                         ← Observation/ontology UMD adapters
 │
 ├── portal/                                 ← @openan/portal
 │   ├── package.json                        ← exports: PortalApp + style.css
@@ -109,9 +113,9 @@ openan-website/                             ← THIS REPO (framework only)
 │   └── src/
 │       ├── index.js                        ← Library entry: export { PortalApp }
 │       ├── PortalApp.jsx                   ← Reusable shell (accepts pluginsConfig prop)
-│       ├── App.jsx                          ← Dev-only wrapper (loads mock plugin)
+│       ├── App.jsx                          ← Repository plugin configuration wrapper
 │       ├── main.jsx                         ← Dev entry point
-│       ├── plugins.config.js               ← Dev plugin config (hello-portal only)
+│       ├── plugins.config.js               ← Discovered source plugins + bundled-plugins.json
 │       ├── auth/
 │       │   ├── AuthContext.jsx             ← Auth state: check/login/logout
 │       │   └── Login.jsx                   ← Login screen
@@ -130,16 +134,7 @@ openan-website/                             ← THIS REPO (framework only)
 │           ├── error_boundary/index.jsx    ← Plugin route error isolation
 │           └── loading.jsx
 │
-└── plugins/
-    └── hello-portal/                       ← Mock plugin (framework validation)
-        ├── package.json                    ← @openan-plugins/hello-portal
-        ├── plugin.manifest.js
-        └── src/
-            ├── index.jsx                   ← Uses usePortalContext() (auth/theme/i18n/api)
-            ├── standalone.jsx              ← Standalone mode entry
-            └── locales/
-                ├── en.json
-                └── zh.json
+└── portal/bundled-plugins.json             ← Single enabled-bundle delivery registry
 ```
 
 ## Plugin Spec
@@ -457,10 +452,13 @@ independently.
 # Install all workspace packages
 npm install
 
-# Start the Portal dev server (loads mock hello-portal plugin)
+# Backend-free SDK example on :3004 (no bundles or login needed)
+npm -w @openan-plugins/hello-portal run dev
+
+# Full Portal on :3003 (requires external backends/artifact setup)
 npm run dev
 
-# Build for production
+# Build the shell only; complete delivery uses build:release
 npm run build
 
 # Lint
@@ -487,14 +485,12 @@ Build output shows the plugin architecture working:
 
 ## Design Decisions
 
-### 1. Build-time integration (workspace aliases) over runtime (Module Federation)
+### 1. Source workspaces and independently built UMD bundles
 
-Disabled plugins are controlled via dynamic `import()` in `plugins.config.js`
-— Vite tree-shakes them in production. All plugins are released uniformly with
-the Portal (per issue #77 No-Goals: no independent version management).
-
-Future evolution: switch to Module Federation for runtime plugin loading
-without rebuilding the Portal.
+Source discovery uses `plugins/plugin-overrides.json`; disabled source imports
+are omitted. Independent bundles use `portal/bundled-plugins.json` and share the
+host React/SDK. They are built independently and assembled as a validated release,
+without adding a separate runtime version-management or Module Federation service.
 
 ### 2. Route-driven navigation over state-driven tab switching
 
@@ -591,5 +587,5 @@ package that both plugins depend on.
 | No-Goal | Compliance |
 |---------|------------|
 | No cross-sub-application state sharing / event bus | ✅ Plugins communicate via backend APIs |
-| No independent version management | ✅ Build-time integration, uniform release |
+| No independent version management service | ✅ Explicit bundle inventory, validated release |
 | No backend API layer changes | ✅ Backend unchanged |

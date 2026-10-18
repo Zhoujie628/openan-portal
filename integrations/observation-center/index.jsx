@@ -49,7 +49,7 @@ export default function ObservationCenter() {
     const detail = trace.data?.id === selected ? trace.data.value : null;
     const rows = sessions.data || [];
     const error = sessions.error || trace.error;
-    return <section className="openan-integration" data-dark={!!theme?.isDark}>
+    return <section className="openan-integration" tabIndex={0} data-dark={!!theme?.isDark}>
         <header><h1>{t.title}</h1><button onClick={() => setRevision(value => value + 1)}>{t.refresh}</button>
             <label><input type="checkbox" checked={automatic} onChange={event => setAutomatic(event.target.checked)} /> {t.auto}</label></header>
         <p>{t.hint}</p>

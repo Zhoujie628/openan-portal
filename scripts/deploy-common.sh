@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 # Sourced by both variants; never starts deployment on its own.
+OPENAN_DEPLOY_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 validate_deploy_args() {
     [[ "$WEB_ROOT" =~ ^/[a-zA-Z0-9_./\ -]+$ ]] && [[ "$WEB_ROOT" != *'/../'* && "$WEB_ROOT" != */.. ]] || {
         echo 'ERROR: WEB_ROOT must be an absolute, literal directory path'; return 1;
@@ -24,17 +25,10 @@ render_nginx() {
     sed -e "s/__PORT1__/$PORT1/g" -e "s/__PORT2__/$PORT2/g" -e "s|__WEB_ROOT__|$WEB_ROOT|g" "$NGINX_CONF_SRC"
 }
 
+verify_release_files() {
+    "${PYTHON_BIN:-python3}" "$OPENAN_DEPLOY_SCRIPT_DIR/verify-release.py" "$WEB_ROOT"
+}
+
 check_plugins() {
-    [[ -f "$WEB_ROOT/plugins.enabled" && -f "$WEB_ROOT/plugins.release.json" ]] || {
-        echo 'ERROR: missing validated release inventory; use npm run build:release'; return 1;
-    }
-    local plugin code failed=0
-    while IFS= read -r plugin; do
-        [[ -z "$plugin" ]] && continue
-        [[ "$plugin" =~ ^[a-z0-9-]+$ ]] || return 1
-        code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT1/plugins/$plugin/plugin.manifest.json") || code=ERR
-        echo "   plugin $plugin -> $code"
-        [[ "$code" == 200 ]] || failed=1
-    done < "$WEB_ROOT/plugins.enabled"
-    return "$failed"
+    "${PYTHON_BIN:-python3}" "$OPENAN_DEPLOY_SCRIPT_DIR/verify-release.py" "$WEB_ROOT" --url "http://127.0.0.1:$PORT1"
 }

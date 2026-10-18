@@ -14,6 +14,9 @@
 - 仅支持 manifest 声明式 menu/routes。旧文档中未实现的 onInit/onActivate/onDeactivate 已移除；携带这些字段的插件会显式校验失败。用组件 useEffect 管理挂载、订阅和卸载清理；没有 registerMenu/registerRoute 空实现。
 - 单个插件的 manifest、语言资源或运行时错误不应影响其他插件；错误在页面可见。全部禁用后仍能打开管理器恢复。
 - 认证保留后端 role；must_change_password 状态不挂载业务页面。完成改密后因后端撤销会话，必须重新登录；普通权限不足的 403 不等同于登录失效。
+- `backend.authScope` 默认 `component`：独立网关的 401/403 只返回给组件，不改变宿主身份。只有实际共享 Portal 会话的插件显式填写 `host`，才能触发全局失效/改密门禁；执行中心已明确声明 host。没有自有 gateway 的旧插件仍使用宿主客户端。
+- 插件启动总期限为 15 秒，涵盖源码入口、manifest、JS/CSS 和语言资源；两种模式并发加载。挂起/超时作为单插件失败，健康插件仍可用；HTTP 及 DOM 加载资源会取消清理。源码 import 不可真正撤销，但过期结果不会登记。恢复资源后可重新加载页面，超时不改变 Task-T/Notification-T 的运行时连接周期。
+- `validateManifestMetadata` 由发布工具、bundle loader 和运行时共用；运行时另外校验 lazy component 函数。JSON bundle 不携带可执行 locale loader，保持既有标签回退；源码模式的 i18n.resources 必须是函数。
 
 ## 本地交付
 
@@ -38,6 +41,10 @@ npm run build:release
 源码、构建制品和业务数据分离，制品继续被 gitignore 排除，不向本仓复制其他组件源码。容器构建同样执行发布校验，需提前安装制品。远程运行时模式仍支持，但离线发布命令拒绝替未经检查的远程产物背书。
 
 部署脚本须携带 deploy-common.sh；目录和端口先校验，Nginx root 按实际 WEB_ROOT 渲染，自检只访问发布清单中的启用插件。完整端到端联调仍需真实后端、正确 TLS/身份配置，不由单元测试替代。
+
+部署还须携带 `verify-release.py` 并提供 Python 3.9+（默认 python3，PYTHON_BIN 可覆盖）。解压后、重载前核对全部插件清单资产 SHA-256；HTTP 自检访问全部清单文件，比较响应内容哈希，并核对 JS/CSS/JSON MIME。不把缺 JS 的 manifest 200 或 SPA fallback 当成成功。本检查不替代发布者身份/签名验证。
+
+`npm run test:browser` 在隔离临时包中编译真实壳层和两个适配器，用受控 HTTP fixture 验证滚轮/键盘、小窗口、认证域隔离、挂起恢复及最小 SDK 示例，不替代五服务业务端到端验收。首次执行先 `npx playwright install chromium`；也可设置 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH 使用本机测试浏览器。Linux CI 执行该回归，Windows/Linux 均执行单元测试和构建。
 
 `apply-plugin-registration.sh` 仅作为旧预构建制品的兼容工具，保留补回三类插件及设置 AN 本体 URL 的接口。它支持旧反引号和当前 JSON 风格，幂等且拒绝歧义/未知结构，不依赖 `zu` 等压缩变量名。新源码已经登记五个插件，应重建而非修改 hash 产物；兼容脚本不能替代制品安装和发布校验。
 

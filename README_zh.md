@@ -9,8 +9,12 @@
 在 `plugins.config.js` 里加一行,页面就出现在 Portal 中。
 
 > **要实现一个插件?** 请从 [`plugins/hello-portal/`](./plugins/hello-portal/) 开始 ——
-> 它是插件契约的**参考实现**。复制该目录作为起点:它演示了如何声明菜单、路由与
-> i18n,如何通过 `usePortalContext()` 读取框架服务,以及如何以独立模式运行。
+> 它是插件契约的**参考实现**。复制该目录作为起点:它演示了如何声明菜单与路由、
+> 如何通过 `usePortalContext()` 读取框架服务,以及如何以独立模式运行。
+
+无需后端的参考例：`npm ci && npm -w @openan-plugins/hello-portal run dev`，
+打开 http://127.0.0.1:3004。完整 Portal 默认禁用该示例，可在 `plugins/plugin-overrides.json`
+中显式启用。见 [示例说明](./plugins/hello-portal/README.md)。
 
 ## 工作原理
 
@@ -66,7 +70,7 @@ Web 页面写成插件(每个插件带一个清单文件,声明菜单按钮、�
 ## 仓库结构
 
 ```
-openan-website/                             ← 本仓库(仅框架)
+openan-website/                             ← Portal 壳、SDK 与集成适配器
 ├── package.json                            ← npm workspaces 根
 ├── eslint.config.js
 ├── scripts/
@@ -93,9 +97,9 @@ openan-website/                             ← 本仓库(仅框架)
 │   └── src/
 │       ├── index.js                        ← 库入口: export { PortalApp }
 │       ├── PortalApp.jsx                   ← 可复用壳(接收 pluginsConfig prop)
-│       ├── App.jsx                          ← 仅开发用包装(加载 mock 插件)
+│       ├── App.jsx                          ← 本仓插件配置包装
 │       ├── main.jsx                         ← 开发入口
-│       ├── plugins.config.js               ← 开发用插件配置(仅 hello-portal)
+│       ├── plugins.config.js               ← 源码自动发现 + bundled-plugins.json
 │       ├── auth/
 │       │   ├── AuthContext.jsx             ← 认证状态: check/login/logout
 │       │   └── Login.jsx                   ← 登录页
@@ -114,6 +118,7 @@ openan-website/                             ← 本仓库(仅框架)
 │           ├── error_boundary/index.jsx    ← 插件路由错误隔离
 │           └── loading.jsx
 │
+├── integrations/                           ← 观测/本体独立 UMD 适配器
 └── plugins/                                ← 插件目录(自动发现)
     ├── plugin-overrides.json               ← 按交付场景启用/禁用插件
     ├── hello-portal/                       ← 参考实现插件 —— 新插件以此为起点
@@ -121,14 +126,10 @@ openan-website/                             ← 本仓库(仅框架)
     │   ├── plugin.manifest.js              ← 插件定义(菜单/路由/i18n/独立模式)
     │   └── src/
     │       ├── index.jsx                   ← 使用 usePortalContext() (auth/theme/i18n/api)
-    │       ├── standalone.jsx              ← 独立模式入口
-    │       └── locales/
-    │           ├── en.json
-    │           └── zh.json
-    ├── registry-center/                    ← 注册中心插件
+    │       └── standalone.jsx              ← 独立模式入口
     ├── orchestration-center/               ← 编排中心插件
     ├── execution-center/                   ← 执行中心插件
-    └── demo-showcase/                      ← 演示大厅插件(3D 虚拟展厅)
+    └── skill-center/                      ← 技能中心源码插件
 ```
 
 ## 插件规范
@@ -439,10 +440,13 @@ createRoot(document.getElementById('root')).render(
 # 安装所有 workspace 包
 npm install
 
-# 启动 Portal 开发服务器(加载 mock hello-portal 插件)
+# 无需后端的 SDK 参考例，端口 3004
+npm -w @openan-plugins/hello-portal run dev
+
+# 完整 Portal，端口 3003，需准备外部后端/插件资产
 npm run dev
 
-# 生产构建
+# 仅壳层构建；完整交付使用 build:release
 npm run build
 
 # 代码检查
@@ -469,12 +473,11 @@ npm run dev    ✓  Vite 在 ~280ms 内就绪, 运行于 http://localhost:3003
 
 ## 设计决策
 
-### 1. 构建时集成(workspace 别名)而非运行时(Module Federation)
+### 1. 源码 workspace 与独立 UMD 制品并存
 
-禁用插件通过 `plugins.config.js` 中的动态 `import()` 控制 —— Vite 在生产构建中
-tree-shake 掉。所有插件与 Portal 统一发布(符合 issue #77 No-Goal: 无独立版本管理)。
-
-未来演进: 切换到 Module Federation 实现运行时插件加载,无需重新构建 Portal。
+源码插件由 `plugins/plugin-overrides.json` 控制发现，禁用项不生成 import。
+独立 bundle 由 `portal/bundled-plugins.json` 登记，共用宿主 React/SDK，独立构建后
+组装并校验发布；不引入额外的运行时版本管理或 Module Federation 服务。
 
 ### 2. 路由驱动导航而非状态驱动 tab 切换
 
@@ -573,5 +576,5 @@ import UnifiedWorkflow from '../orchestration_center/workflow/index.jsx';
 | 非目标 | 合规 |
 |--------|------|
 | 不做跨子应用 state 共享 / 事件总线 | ✅ 插件通过后端 API 通信 |
-| 不做独立版本管理 | ✅ 构建时集成, 统一发布 |
+| 不做独立版本管理服务 | ✅ 显式 bundle 清单, 校验后统一交付 |
 | 不改后端 API 层 | ✅ 后端不变 |

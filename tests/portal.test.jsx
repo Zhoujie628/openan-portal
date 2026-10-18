@@ -96,3 +96,16 @@ test('structured password-change event gates existing session, ordinary 403 is n
     expect(node.querySelectorAll('input[type=password]')).toHaveLength(3);
     expect(node.textContent).not.toContain('HEALTHY_CONTENT');
 });
+test.each(['manifest', 'locale'])('pending source %s is isolated by its deadline', async resource => {
+    vi.useFakeTimers();
+    try {
+        const pending = resource === 'manifest'
+            ? { id: 'pending', manifest: () => new Promise(() => {}) }
+            : plugin('pending', Healthy, { i18n: { namespace: 'pending', resources: { en: () => new Promise(() => {}) } } });
+        await act(async () => root.render(<PortalApp pluginsConfig={{ plugins: [plugin('healthy'), pending] }} />));
+        await act(async () => vi.advanceTimersByTimeAsync(15001));
+        expect(node.textContent).toContain('HEALTHY_CONTENT');
+        expect(node.querySelector('[role=alert]').textContent).toContain('timed out');
+        expect(node.querySelector('button[aria-label="Plugin Management"]')).toBeTruthy();
+    } finally { vi.useRealTimers(); }
+});

@@ -1,4 +1,4 @@
-.openan-integration { padding: 24px; color: #182234; background: #f6f8fc; min-height: 100%; box-sizing: border-box; }
+.openan-integration { padding: 24px; color: #182234; background: #f6f8fc; height: 100%; min-height: 0; overflow-y: auto; box-sizing: border-box; }
 .openan-integration[data-dark="true"] { color: #e3eaf5; background: #121b2c; }
 .openan-integration header, .openan-integration .integration-toolbar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
 .openan-integration h1 { font-size: 22px; font-weight: 650; margin: 0; }

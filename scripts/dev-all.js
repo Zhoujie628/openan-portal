@@ -18,13 +18,8 @@
 /**
  * dev-all.js — one-click dev startup.
  *
- * In the current build-time integration model, all plugins are workspace
- * packages bundled by the Portal's Vite dev server.  This script simply
- * starts the Portal.
- *
- * Future evolution: when plugins switch to Module Federation (runtime
- * loading), each enabled plugin will get its own dev server, and this
- * script will start them all in parallel (similar to `concurrently`).
+ * Starts the Portal only. Source plugins are compiled by Vite; independent
+ * UMD artifacts and backend services must be prepared separately.
  */
 import { spawn } from 'child_process';
 import { resolve, dirname } from 'path';

@@ -12,6 +12,7 @@
 | `deploy-zh.sh` | 一键部署脚本（中文提示）：复制备份 → 叠加解压 → 装 nginx 配置 → 自检 |
 | `deploy-en.sh` | One-click deploy script (English output) |
 | `deploy-common.sh` | 两个语言脚本共用的参数校验、模板渲染与插件自检，必须一起上传 |
+| `verify-release.py` | Python 3 标准库校验全部插件资产哈希及 HTTP 内容，必须一起上传 |
 | `apply-plugin-registration.sh` | 旧预构建制品的兼容注册工具，需 Python 3.9+；正常交付优先使用 JSON 清单重建 |
 | `openan-portal.nginx.conf` | nginx 配置模板（端口可参数化） |
 | `README-DEPLOY.md` | 本文档 |
@@ -29,6 +30,7 @@
 > 后端未部署时 Portal 仍可打开，只是对应插件的列表数据为空/报错；至少部署编排中心（5001）即可使用「编排中心 + 执行中心」。
 
 3. **防火墙/安全组**：放行 Portal 端口（默认 9003）。
+4. **Python 3.9+**：部署前和 HTTP 自检均需要；默认命令 python3，可用 PYTHON_BIN 指定。缺文件、哈希不符、清单不一致或错误 JS/CSS MIME 会失败，不能仅以 manifest 200 判成功。
 
 ## 部署步骤（目标服务器）
 

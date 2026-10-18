@@ -16,5 +16,6 @@
 //    under the License.
 
 export { PortalContext, usePortalContext, PortalProvider } from './plugin-context.jsx';
-export { validateManifest } from './plugin-manifest.js';
+export { validateManifest, validateManifestMetadata } from './plugin-manifest.js';
 export { loadEnabledPlugins } from './config-loader.js';
+export { withPluginDeadline, DEFAULT_PLUGIN_TIMEOUT_MS } from './async-resource.js';

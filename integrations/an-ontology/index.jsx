@@ -33,7 +33,7 @@ export default function OntologyCenter() {
         load();
         return () => controller.abort();
     }, []);
-    return <section className="openan-integration" data-dark={!!theme?.isDark}>
+    return <section className="openan-integration" tabIndex={0} data-dark={!!theme?.isDark}>
         <header><h1>{zh ? '本体 T-Box 编辑器' : 'Ontology T-Box Editor'}</h1>
             {url && <a href={url} target="_blank" rel="noopener noreferrer">{zh ? '在独立页面打开' : 'Open separately'}</a>}</header>
         <p>{zh ? '使用本体服务原生编辑器。离开此菜单会关闭本次工作区，请先下载成果；编辑器主题与语言由自身管理。' : 'Native ontology editor. Leaving this menu closes its workspace; download your work first. The editor manages its own theme and language.'}</p>

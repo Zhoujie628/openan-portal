@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { validateManifestMetadata } from '../packages/portal-sdk/src/plugin-manifest.js';
 
 const workspace = fileURLToPath(new URL('../', import.meta.url));
 const safeFile = value => typeof value === 'string' && /^[A-Za-z0-9_.-]+$/.test(value) && value !== '..';
@@ -24,6 +25,7 @@ async function artifactFiles(directory, prefix = '') {
 
 export async function inspectArtifact(directory, id) {
     const manifest = JSON.parse(await fs.readFile(path.join(directory, 'plugin.manifest.json'), 'utf8'));
+    validateManifestMetadata(manifest);
     if (manifest.id !== id || !manifest.name || !manifest.version || !manifest.routes?.length ||
         manifest.routes.some(route => typeof route.path !== 'string' || !route.path.startsWith('/'))) {
         throw new Error(`${id}: invalid plugin manifest`);
@@ -76,11 +78,15 @@ export async function installArtifact(directory, id, root = workspace) {
 export async function validateArtifacts(root = workspace) {
     const registry = JSON.parse(await fs.readFile(path.join(root, 'portal/bundled-plugins.json'), 'utf8'));
     const records = [];
+    const ids = new Set(), paths = new Set();
     for (const plugin of registry.filter(plugin => plugin.enabled !== false)) {
         if (!/^[a-z0-9-]+$/.test(plugin.id) || plugin.entry !== `/plugins/${plugin.id}`) {
             throw new Error(`${plugin.id}: release validation requires local /plugins/<id> artifacts; remote delivery must be verified separately`);
         }
         const { manifest, sha256 } = await inspectArtifact(path.join(root, 'portal/public', plugin.entry), plugin.id);
+        if (ids.has(plugin.id) || manifest.routes.some(route => paths.has(route.path))) throw new Error('Duplicate plugin id or route');
+        ids.add(plugin.id);
+        manifest.routes.forEach(route => paths.add(route.path));
         records.push({ id: plugin.id, version: manifest.version, sha256 });
     }
     return records;

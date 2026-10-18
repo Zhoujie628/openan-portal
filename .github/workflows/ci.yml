@@ -19,3 +19,7 @@ jobs:
       - run: npm test
       - run: npm run integrations:build
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+        if: runner.os == 'Linux'
+      - run: npm run test:browser
+        if: runner.os == 'Linux'

@@ -16,6 +16,7 @@
 //    under the License.
 
 import { validateManifest } from './plugin-manifest.js';
+import { withPluginDeadline } from './async-resource.js';
 
 /**
  * Load and validate all enabled plugins from a portal configuration object.
@@ -33,7 +34,7 @@ import { validateManifest } from './plugin-manifest.js';
  * @param {{ plugins: Array<{ id: string, enabled: boolean, manifest: () => Promise<{ default: import('./plugin-manifest.js').PluginManifest }> }}> }} config
  * @returns {Promise<import('./plugin-manifest.js').PluginManifest[]>} — validated manifests, sorted by first menu item order
  */
-export async function loadEnabledPlugins(config, { onError = (id, error) => console.error(`[Portal] Plugin ${id}:`, error) } = {}) {
+export async function loadEnabledPlugins(config, { signal, timeoutMs, onError = (id, error) => console.error(`[Portal] Plugin ${id}:`, error) } = {}) {
     if (!config || !Array.isArray(config.plugins)) {
         return [];
     }
@@ -52,12 +53,12 @@ export async function loadEnabledPlugins(config, { onError = (id, error) => cons
                         'Expected: { manifest: () => import("...") }'
                     );
                 }
-                const mod = await p.manifest();
+                const mod = await withPluginDeadline(() => p.manifest(), { signal, timeoutMs, label: `Plugin ${p.id} manifest` });
                 const manifest = validateManifest(mod.default || mod);
                 if (manifest.id !== p.id) throw new Error('Configured plugin id does not match its manifest');
                 return manifest;
             } catch (error) {
-                onError(p.id, error);
+                if (!signal?.aborted) onError(p.id, error);
                 return null;
             }
         })

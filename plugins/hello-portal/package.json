@@ -1,0 +1,9 @@
+{
+  "name": "@openan-plugins/hello-portal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "vite --host 127.0.0.1 --port 3004", "build": "vite build" },
+  "dependencies": { "@openan/portal-sdk": "*" },
+  "peerDependencies": { "react": "^18.0.0", "react-dom": "^18.0.0" }
+}

@@ -15,6 +15,7 @@ This package contains the **production build artifacts** of OpenAN Portal (the p
 | `deploy-zh.sh` | One-click deploy script (Chinese output): copy-backup → overlay extract → install nginx config → self-check |
 | `deploy-en.sh` | One-click deploy script (English output) |
 | `deploy-common.sh` | Shared argument validation, template rendering and inventory-based checks; upload with both scripts |
+| `verify-release.py` | Required Python standard-library verifier for all plugin asset hashes and HTTP content |
 | `apply-plugin-registration.sh` | Compatibility tool for older prebuilt packages; requires Python 3.9+ |
 | `openan-portal.nginx.conf` | nginx config template (ports parametrizable) |
 | `README-DEPLOY-EN.md` | This document |
@@ -32,6 +33,7 @@ This package contains the **production build artifacts** of OpenAN Portal (the p
 > Without backends the Portal still opens; the corresponding plugin panels just show empty data / errors. Deploying the Orchestration backend (5001) alone enables "Orchestration Center + Execution Center".
 
 3. **Firewall / security group**: open the Portal port (default 9003).
+4. **Python 3.9+**: required for pre-reload and HTTP checks (python3 by default; override with PYTHON_BIN). Missing assets, hash/inventory mismatches and wrong JS/CSS MIME types fail; manifest HTTP 200 alone is not success.
 
 ## Deployment Steps (target server)
 

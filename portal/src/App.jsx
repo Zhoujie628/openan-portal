@@ -17,7 +17,7 @@
 
 /**
  * Dev-only entry — wraps PortalApp with the framework repo's own
- * plugins.config.js (which loads the mock hello-portal plugin).
+ * plugins.config.js (discovered source plugins and configured UMD bundles).
  *
  * Consumer repos do NOT use this file. They import PortalApp directly:
  *   import { PortalApp } from '@openan/portal';

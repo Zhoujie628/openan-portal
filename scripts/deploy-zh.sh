@@ -46,6 +46,7 @@ fi
 echo "== 2/5 解压新版本(叠加，保留旧 chunk) =="
 mkdir -p "$WEB_ROOT"
 tar -xzf "$TARBALL" -C "$WEB_ROOT"
+verify_release_files
 FILE_COUNT=$(find "$WEB_ROOT" -type f | wc -l)
 echo "   已部署到: $WEB_ROOT ($FILE_COUNT 个文件)"
 if [ "$OVERLAY" = "1" ]; then

@@ -15,7 +15,7 @@ afterEach(async () => {
 });
 const artifact = async (id = 'registry-center') => {
     const directory = path.join(temp, 'portal/public/plugins', id); await fs.mkdir(directory, { recursive: true });
-    const manifest = { id, name: id, version: '1.0.0', routes: [{ path: '/registry' }], entry: 'index.js', css: 'index.css' };
+    const manifest = { id, name: id, version: '1.0.0', routes: [{ path: `/${id}` }], entry: 'index.js', css: 'index.css' };
     await fs.writeFile(path.join(directory, 'plugin.manifest.json'), JSON.stringify(manifest));
     await fs.writeFile(path.join(directory, 'index.js'), `window.__OPENAN_PLUGIN__${id.replaceAll('-', '_')}={default:function(){}};`);
     await fs.writeFile(path.join(directory, 'index.css'), 'body{}'); return { directory, manifest };
@@ -92,9 +92,24 @@ test.skipIf(!bash)('custom web root and ports render correctly; unsafe input is 
     for (const unsafe of ['/', '/data/../etc', '/data/bad";injected']) expect(run(command, unsafe, '8080').status).not.toBe(0);
     expect(run(command, '/data/portal', '65536').status).not.toBe(0);
 });
-test.skipIf(!bash)('deployment self-check only probes enabled bundles from the release inventory', async () => {
+test.skipIf(!bash)('deployment rejects an enabled list inconsistent with its release inventory', async () => {
     await fs.writeFile(path.join(temp, 'plugins.enabled'), 'registry-center\n');
     await fs.writeFile(path.join(temp, 'plugins.release.json'), '[]');
     const result = run('source scripts/deploy-common.sh; WEB_ROOT="$1"; PORT1=8080; curl(){ [[ "$*" != *ontology-demo* ]] || return 1; printf 200; }; check_plugins', temp.replaceAll('\\', '/'));
-    expect(result.status).toBe(0); expect(result.stdout).toContain('registry-center -> 200'); expect(result.stdout).not.toContain('ontology-demo');
+    expect(result.status).not.toBe(0); expect(result.stdout).not.toContain('ontology-demo');
+});
+test.each([{ backend: {} }, { menu: [{}] }, { onInit: 'unsupported' }, { backend: { gateway: '/api/example', authScope: 'unknown' } }])('publication uses the same declarative schema for %j', async extra => {
+    const { directory, manifest } = await artifact();
+    await fs.writeFile(path.join(directory, 'plugin.manifest.json'), JSON.stringify({ ...manifest, ...extra }));
+    await expect(inspectArtifact(directory, manifest.id)).rejects.toThrow('Invalid plugin manifest');
+});
+test('release rejects duplicate ids and cross-plugin route collisions', async () => {
+    const first = await artifact('first'); const second = await artifact('second');
+    const registry = [{ id: 'first', entry: '/plugins/first' }, { id: 'second', entry: '/plugins/second' }];
+    await fs.writeFile(path.join(temp, 'portal/bundled-plugins.json'), JSON.stringify([...registry, registry[0]]));
+    await expect(validateArtifacts(temp)).rejects.toThrow('Duplicate');
+    second.manifest.routes = first.manifest.routes;
+    await fs.writeFile(path.join(second.directory, 'plugin.manifest.json'), JSON.stringify(second.manifest));
+    await fs.writeFile(path.join(temp, 'portal/bundled-plugins.json'), JSON.stringify(registry));
+    await expect(validateArtifacts(temp)).rejects.toThrow('Duplicate');
 });

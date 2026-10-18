@@ -48,6 +48,7 @@ fi
 echo "== 2/5 Extracting new release (overlay, old chunks kept) =="
 mkdir -p "$WEB_ROOT"
 tar -xzf "$TARBALL" -C "$WEB_ROOT"
+verify_release_files
 FILE_COUNT=$(find "$WEB_ROOT" -type f | wc -l)
 echo "   Deployed to: $WEB_ROOT ($FILE_COUNT files)"
 if [ "$OVERLAY" = "1" ]; then

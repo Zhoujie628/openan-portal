@@ -18,7 +18,7 @@
 import { lazy, Suspense, useState, useEffect, useMemo, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { PortalProvider, loadEnabledPlugins, validateManifest } from '@openan/portal-sdk';
+import { PortalProvider, loadEnabledPlugins, validateManifest, withPluginDeadline } from '@openan/portal-sdk';
 import { loadPluginBundle } from './bundle-loader.js';
 import { loadPluginI18n } from './i18n/index.js';
 import { AuthProvider, useAuth } from './auth/AuthContext.jsx';
@@ -69,6 +69,7 @@ function PortalShell({ pluginsConfig }) {
 
     useEffect(() => {
         let active = true;
+        const controller = new AbortController();
         async function loadAllPlugins() {
             const errors = [];
             const onError = (id, error) => errors.push({ id, message: error.message || 'Plugin load failed' });
@@ -81,34 +82,35 @@ function PortalShell({ pluginsConfig }) {
                 (p) => p.mode === 'bundle' && p.entry && p.enabled !== false
             );
 
-            // 1. SOURCE plugins — compiled by Portal's Vite at build time
-            const sourceManifests = await loadEnabledPlugins({ plugins: sourceEntries }, { onError });
-
-            // 2. BUNDLE plugins — local artifacts or remote http, loaded via <script>
-            const bundleManifests = await Promise.all(
-                bundleEntries.map(async (entry) => {
-                    try {
-                        const manifest = validateManifest(await loadPluginBundle(entry));
-                        if (manifest.id !== entry.id) throw new Error('Configured plugin id does not match its manifest');
-                        return manifest;
-                    } catch (err) {
-                        console.error(`[Portal] Failed to load bundled plugin "${entry.id}" (${entry._loadMode || 'bundle'}):`, err);
-                        onError(entry.id, err);
-                        return null;
-                    }
-                })
-            );
-
-            const all = [...sourceManifests, ...bundleManifests.filter(Boolean)]
-                .sort((a, b) => (a.menu?.[0]?.order ?? 999) - (b.menu?.[0]?.order ?? 999));
-
+            const load = async (entry, bundle) => {
+                try {
+                    const manifest = await withPluginDeadline(async signal => {
+                        const value = bundle
+                            ? validateManifest(await loadPluginBundle(entry, { signal }))
+                            : (await loadEnabledPlugins({ plugins: [entry] }, { signal, onError }))[0];
+                        if (!value) return null;
+                        if (value.id !== entry.id) throw new Error('Configured plugin id does not match its manifest');
+                        if (value.i18n) await loadPluginI18n(value.i18n, { signal });
+                        return value;
+                    }, { signal: controller.signal, label: `Plugin ${entry.id}` });
+                    return manifest;
+                } catch (error) {
+                    if (!controller.signal.aborted) onError(entry.id, error);
+                    return null;
+                }
+            };
+            // Start both modes together; one pending import/network/locale has
+            // a finite deadline and cannot indefinitely block healthy plugins.
+            const all = (await Promise.all([
+                ...sourceEntries.map(entry => load(entry, false)),
+                ...bundleEntries.map(entry => load(entry, true)),
+            ])).filter(Boolean).sort((a, b) => (a.menu?.[0]?.order ?? 999) - (b.menu?.[0]?.order ?? 999));
             const ids = new Set();
             const paths = new Set();
             const ready = [];
             for (const plugin of all) {
                 try {
                     if (ids.has(plugin.id) || plugin.routes.some(r => paths.has(r.path))) throw new Error('Duplicate plugin id or route');
-                    if (plugin.i18n) await loadPluginI18n(plugin.i18n);
                     ids.add(plugin.id);
                     plugin.routes.forEach(r => paths.add(r.path));
                     ready.push(plugin);
@@ -121,7 +123,7 @@ function PortalShell({ pluginsConfig }) {
             console.error('[Portal] Failed to load plugins:', err);
             if (active) { setPlugins([]); setPluginErrors([{ id: 'portal', message: err.message }]); }
         });
-        return () => { active = false; };
+        return () => { active = false; controller.abort(); };
     }, [pluginsConfig]);
 
     const togglePlugin = useCallback((id) => {
@@ -173,7 +175,7 @@ function PortalShell({ pluginsConfig }) {
 
     // Stable per-plugin clients, built before rendering route elements.
     const pluginApis = useMemo(() => new Map((plugins || []).map(plugin =>
-        [plugin.id, plugin.backend?.gateway ? createApi(plugin.backend.gateway) : api]
+        [plugin.id, plugin.backend?.gateway ? createApi(plugin.backend.gateway, { authScope: plugin.backend.authScope || 'component' }) : api]
     )), [plugins]);
 
     if (auth.isChecking) {

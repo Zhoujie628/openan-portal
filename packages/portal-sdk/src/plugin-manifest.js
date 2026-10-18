@@ -58,7 +58,7 @@
  * @param {PluginManifest} manifest
  * @returns {PluginManifest} — the validated manifest (same reference)
  */
-export function validateManifest(manifest) {
+export function validateManifestMetadata(manifest) {
     const errors = [];
 
     if (!manifest || typeof manifest !== 'object') {
@@ -81,17 +81,23 @@ export function validateManifest(manifest) {
     } else {
         manifest.routes.forEach((r, i) => {
             if (typeof r?.path !== 'string' || !r.path.startsWith('/')) errors.push(`manifest.routes[${i}].path must be absolute`);
-            if (typeof r?.component !== 'function') {
-                errors.push(`manifest.routes[${i}].component must be a lazy-import function`);
-            }
         });
+        if (new Set(manifest.routes.map(r => r?.path)).size !== manifest.routes.length) errors.push('duplicate route path');
     }
-    if (manifest.menu && !Array.isArray(manifest.menu)) {
+    if (manifest.menu !== undefined && !Array.isArray(manifest.menu)) {
         errors.push('manifest.menu must be an array if present');
     }
     if (manifest.backend !== undefined && (typeof manifest.backend?.gateway !== 'string' ||
         !/^(\/|https?:\/\/)/.test(manifest.backend.gateway))) {
         errors.push('backend.gateway must be an absolute URL or same-origin path');
+    }
+    if (manifest.backend?.authScope !== undefined && !['host', 'component'].includes(manifest.backend.authScope)) {
+        errors.push('backend.authScope must be host or component');
+    }
+    for (const file of ['entry', 'css']) {
+        if (manifest[file] !== undefined && (typeof manifest[file] !== 'string' || !/^[A-Za-z0-9_-][A-Za-z0-9_.-]*$/.test(manifest[file]))) {
+            errors.push(`unsafe artifact ${file} filename`);
+        }
     }
     if (Array.isArray(manifest.menu)) {
         for (const item of manifest.menu) {
@@ -101,16 +107,27 @@ export function validateManifest(manifest) {
         }
     }
     if (manifest.i18n) {
-        if (!manifest.i18n.namespace) {
+        if (typeof manifest.i18n.namespace !== 'string' || !manifest.i18n.namespace) {
             errors.push('manifest.i18n.namespace is required when i18n is present');
         }
-        if (!manifest.i18n.resources || typeof manifest.i18n.resources !== 'object') {
+        if (!manifest.i18n.resources || typeof manifest.i18n.resources !== 'object' || Array.isArray(manifest.i18n.resources)) {
             errors.push('manifest.i18n.resources must be an object');
+        } else if (Object.values(manifest.i18n.resources).some(loader => typeof loader !== 'function')) {
+            errors.push('manifest.i18n.resources must contain loader functions (source mode only)');
         }
     }
 
     if (errors.length > 0) {
         throw new Error(`Invalid plugin manifest "${manifest.id || '?'}": ${errors.join('; ')}`);
     }
+    return manifest;
+}
+
+/** The same declarative contract is checked before publication and loading. */
+export function validateManifest(manifest) {
+    validateManifestMetadata(manifest);
+    manifest.routes.forEach((route, index) => {
+        if (typeof route.component !== 'function') throw new Error(`Invalid plugin manifest "${manifest.id}": manifest.routes[${index}].component must be a lazy-import function`);
+    });
     return manifest;
 }

@@ -16,13 +16,31 @@ test.each(['/rest/v1/registry-center/agent-cards', '/api/registry-center/rest/v1
 test('forbidden does not log out unless backend requests password change', async () => {
     const expired = vi.fn(), required = vi.fn();
     window.addEventListener('auth-expired', expired); window.addEventListener('auth-password-change-required', required);
-    const client = createApi('/api/orchestrate');
+    const client = createApi('/api/orchestrate', { authScope: 'host' });
     try {
         client.defaults.adapter = config => Promise.reject({ config, response: { status: 403, data: {} } });
         await expect(client.get('/resource')).rejects.toBeTruthy(); expect(expired).not.toHaveBeenCalled(); expect(required).not.toHaveBeenCalled();
         client.defaults.adapter = config => Promise.reject({ config, response: { status: 403, data: { data: { must_change_password: true } } } });
         await expect(client.get('/resource')).rejects.toBeTruthy(); expect(required).toHaveBeenCalledOnce(); expect(expired).not.toHaveBeenCalled();
     } finally { window.removeEventListener('auth-expired', expired); window.removeEventListener('auth-password-change-required', required); }
+});
+test.each([401, 403])('independent component HTTP %s never changes host authentication', async status => {
+    const expired = vi.fn(), required = vi.fn();
+    window.addEventListener('auth-expired', expired); window.addEventListener('auth-password-change-required', required);
+    try {
+        const client = createApi('/api/independent');
+        client.defaults.adapter = config => Promise.reject({ config, response: { status, data: { data: { must_change_password: true } } } });
+        await expect(client.get('/resource')).rejects.toBeTruthy();
+        expect(expired).not.toHaveBeenCalled(); expect(required).not.toHaveBeenCalled();
+    } finally { window.removeEventListener('auth-expired', expired); window.removeEventListener('auth-password-change-required', required); }
+});
+test('only an explicitly shared host session emits auth-expired on 401', async () => {
+    const expired = vi.fn(); window.addEventListener('auth-expired', expired);
+    try {
+        const client = createApi('/any/gateway', { authScope: 'host' });
+        client.defaults.adapter = config => Promise.reject({ config, response: { status: 401, data: {} } });
+        await expect(client.get('/resource')).rejects.toBeTruthy(); expect(expired).toHaveBeenCalledOnce();
+    } finally { window.removeEventListener('auth-expired', expired); }
 });
 test('change-password uses the real backend contract, wrong old password keeps the gate', async () => {
     const expired = vi.fn(); window.addEventListener('auth-expired', expired);
